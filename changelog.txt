@@ -1,2 +1,4 @@
+v 1.0.1
+ * KerboKatzUtilities compatibility release 
 v 1.00
  * Initial release

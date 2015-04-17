@@ -4,39 +4,28 @@ using UnityEngine;
 namespace KerboKatz
 {
   [KSPAddon(KSPAddon.Startup.SpaceCentre, false)]
-  public class KerbalScienceExchange : MonoBehaviour
+  public partial class KerbalScienceExchange : KerboKatzBase
   {
-    private ApplicationLauncherButton button;
     private bool initStyle       = false;
     private double lastTime      = 0;
     private double modifier      = 0;
-    private float tooltipHeight;
-    private GUIStyle buttonStyle;
-    private GUIStyle numberFieldStyle;
-    private GUIStyle textStyle;
-    private GUIStyle tooltipStyle;
-    private GUIStyle windowStyle;
-    private Rect tooltipRect     = new Rect(0, 0, 230, 20);
     private Rect windowPosition  = new Rect(0, 0, 0, 0);
-    private settings currentSettings;
-    private string CurrentTooltip;
-    private string modName       = "KerbalScienceExchange";
     private string sellBuyString = "0";
 
-    private void Awake()
+    public KerbalScienceExchange()
     {
-      if (!Utilities.checkUtilitiesSupport(new Version(1, 0, 0), modName))
+      modName = "KerbalScienceExchange";
+      requiresUtilities = new Version(1, 0, 4);
+    }
+
+    public override void Start()
+    {
+      if (!(HighLogic.CurrentGame.Mode == Game.Modes.CAREER || HighLogic.CurrentGame.Mode == Game.Modes.SCIENCE_SANDBOX))
       {
         Destroy(this);
         return;
       }
-      GameEvents.onGUIApplicationLauncherReady.Add(OnGuiAppLauncherReady);
-    }
-
-    private void Start()
-    {
-      currentSettings = new settings();
-      currentSettings.load(modName, "settings", modName);
+      base.Start();
       currentSettings.setDefault("delta", "10");
       currentSettings.setDefault("repLow", "0");
       currentSettings.setDefault("repHigh", "10000");
@@ -49,46 +38,12 @@ namespace KerboKatz
       windowPosition.y = currentSettings.getFloat("windowY");
     }
 
-    private void OnDestroy()
-    {
-      if (currentSettings != null)
-      {
-        currentSettings.set("showSettings", false);
-        currentSettings.set("windowX", windowPosition.x);
-        currentSettings.set("windowY", windowPosition.y);
-        currentSettings.save();
-      }
-      GameEvents.onGUIApplicationLauncherReady.Remove(OnGuiAppLauncherReady);
-      if (button != null)
-      {
-        ApplicationLauncher.Instance.RemoveModApplication(button);
-      }
-    }
 
-    private double calcModifier()
+    public override void OnGuiAppLauncherReady()
     {
-      if (Planetarium.GetUniversalTime() - 5 <= lastTime)
-        return modifier;
-      float repHigh = currentSettings.getFloat("repHigh");
-      float repLow = currentSettings.getFloat("repLow");
-      float repScale = ((Mathf.Min(Reputation.UnitRep, repHigh) - repHigh) / (repLow - repHigh));
-      lastTime = Planetarium.GetUniversalTime();
-      modifier = (double)(1 + (repScale * currentSettings.getFloat("delta") + currentSettings.getFloat("tax")) / 100);
-      return modifier;
-    }
-
-    private void OnGuiAppLauncherReady()
-    {
-      button = ApplicationLauncher.Instance.AddModApplication(
-          toggleWindow, 	//RUIToggleButton.onTrue
-          toggleWindow,	//RUIToggleButton.onFalse
-          null, //RUIToggleButton.OnHover
-          null, //RUIToggleButton.onHoverOut
-          null, //RUIToggleButton.onEnable
-          null, //RUIToggleButton.onDisable
-          ApplicationLauncher.AppScenes.SPACECENTER, //visibleInScenes
-          Utilities.getTexture("icon", "KerbalScienceExchange/Textures")//texture
-      );
+      base.OnGuiAppLauncherReady();
+      button.Setup(toggleWindow, toggleWindow, Utilities.getTexture("icon", "KerbalScienceExchange/Textures"));
+      button.VisibleInScenes = ApplicationLauncher.AppScenes.SPACECENTER;
     }
 
     private void toggleWindow()
@@ -102,114 +57,29 @@ namespace KerboKatz
         currentSettings.set("showWindow", true);
       }
     }
-
-    public void OnGUI()
+    public override void OnDestroy()
     {
-      if (HighLogic.LoadedScene == GameScenes.SPACECENTER && (HighLogic.CurrentGame.Mode == Game.Modes.CAREER || HighLogic.CurrentGame.Mode == Game.Modes.SCIENCE_SANDBOX) && !initStyle) InitStyle();
-
-      if (HighLogic.LoadedScene == GameScenes.SPACECENTER && currentSettings.getBool("showWindow") && (HighLogic.CurrentGame.Mode == Game.Modes.CAREER || HighLogic.CurrentGame.Mode == Game.Modes.SCIENCE_SANDBOX))
+      if (currentSettings != null)
       {
-        windowPosition = GUILayout.Window(6381183, windowPosition, MainWindow, "Kerbal Science Exchange", windowStyle);
-        Utilities.clampToScreen(ref windowPosition);
-        if (!String.IsNullOrEmpty(CurrentTooltip))
-        {
-          tooltipRect.x = Input.mousePosition.x + 10;
-          tooltipRect.y = Screen.height - Input.mousePosition.y + 10;
-          Utilities.clampToScreen(ref tooltipRect);
-          tooltipRect.height = tooltipHeight;
-          GUI.Label(tooltipRect, CurrentTooltip, tooltipStyle);
-          GUI.depth = 0;
-        }
+        currentSettings.set("showSettings", false);
+        currentSettings.set("windowX", windowPosition.x);
+        currentSettings.set("windowY", windowPosition.y);
       }
+      base.OnDestroy();
     }
 
-    private void InitStyle()
+    private double calcModifier()
     {
-      windowStyle                    = new GUIStyle(HighLogic.Skin.window);
-      windowStyle.fixedWidth         = 250f;
-      windowStyle.padding.left       = 0;
-
-      textStyle                      = new GUIStyle(HighLogic.Skin.label);
-      textStyle.fixedWidth           = 190f;
-      textStyle.margin.left          = 10;
-
-      numberFieldStyle               = new GUIStyle(HighLogic.Skin.box);
-      numberFieldStyle.fixedWidth    = 52f;
-      numberFieldStyle.fixedHeight   = 22f;
-      numberFieldStyle.alignment     = TextAnchor.MiddleCenter;
-      numberFieldStyle.padding.right = 7;
-      numberFieldStyle.margin.top    = 5;
-
-      buttonStyle                    = new GUIStyle(GUI.skin.button);
-      buttonStyle.fixedWidth         = 75f;
-
-      tooltipStyle                   = new GUIStyle(HighLogic.Skin.label);
-      tooltipStyle.fixedWidth        = 230f;
-      tooltipStyle.padding.top       = 5;
-      tooltipStyle.padding.left      = 5;
-      tooltipStyle.padding.right     = 5;
-      tooltipStyle.padding.bottom    = 5;
-      tooltipStyle.fontSize          = 10;
-      tooltipStyle.normal.background = Utilities.getTexture("tooltipBG", "Textures");
-      tooltipStyle.normal.textColor  = Color.white;
-      tooltipStyle.border.top        = 1;
-      tooltipStyle.border.bottom     = 1;
-      tooltipStyle.border.left       = 8;
-      tooltipStyle.border.right      = 8;
-      tooltipStyle.stretchHeight     = true;
-
-      initStyle                      = true;
+      if (Planetarium.GetUniversalTime() - 5 <= lastTime)
+        return modifier;
+      float repHigh = currentSettings.getFloat("repHigh");
+      float repLow = currentSettings.getFloat("repLow");
+      float repScale = ((Mathf.Min(Reputation.UnitRep, repHigh) - repHigh) / (repLow - repHigh));
+      lastTime = Planetarium.GetUniversalTime();
+      modifier = (double)(1 + (repScale * currentSettings.getFloat("delta") + currentSettings.getFloat("tax")) / 100);
+      return modifier;
     }
-
-    private void MainWindow(int windowID)
-    {
-      GUILayout.BeginVertical();
-      GUILayout.Space(25);
-      GUILayout.BeginHorizontal();
-      Utilities.createLabel("Science amount:", textStyle);
-      sellBuyString = GUILayout.TextField(Utilities.getOnlyNumbers(sellBuyString), 5, numberFieldStyle);
-      GUILayout.EndHorizontal();
-      GUILayout.BeginHorizontal();
-      Utilities.createLabel("Conversion rate", textStyle);
-      Utilities.createLabel(currentSettings.getFloat("conversionRate").ToString("N0"), textStyle);
-      GUILayout.EndHorizontal();
-      GUILayout.BeginHorizontal();
-      Utilities.createLabel("Tax & conversion fee", textStyle, "The conversion fee depends on your current reputation(" + Math.Round(Reputation.CurrentRep).ToString("N0") + "). At " + currentSettings.getFloat("repHigh").ToString("N0") + " the conversion fee is 0% and at " + currentSettings.getFloat("repLow").ToString("N0") + " the fee is " + currentSettings.getString("delta") + "%");
-      Utilities.createLabel(Utilities.round(calcModifier(), 2).ToString(), textStyle);
-      GUILayout.EndHorizontal();
-      GUILayout.Space(12);
-      GUILayout.BeginHorizontal();
-      GUILayout.FlexibleSpace();
-      float buyScienceAmount = (float)buyScience(true);
-      float sellScienceAmount = (float)sellScience(false, true);
-      if (Utilities.createButton("Buy", buttonStyle, "calcBuy", !Funding.CanAfford(buyScienceAmount) || buyScienceAmount==0))
-      {
-        buyScience();
-      }
-      GUILayout.FlexibleSpace();
-      if (Utilities.createButton("Sell", buttonStyle, "calcSell", !ResearchAndDevelopment.CanAfford(sellScienceAmount) || sellScienceAmount==0))
-      {
-        sellScience();
-      }
-      GUILayout.FlexibleSpace();
-      GUILayout.EndHorizontal();
-      if (GUI.tooltip == "calcBuy")
-      {
-        CurrentTooltip = "Buy science for " + Math.Round(buyScience(true));
-      }
-      else if (GUI.tooltip == "calcSell")
-      {
-        CurrentTooltip = "Sell science for " + Math.Round(sellScience(true));
-      }
-      else
-      {
-        CurrentTooltip = GUI.tooltip;
-      }
-      tooltipHeight = tooltipStyle.CalcHeight(new GUIContent(CurrentTooltip), tooltipStyle.fixedWidth);
-      GUILayout.EndVertical();
-      GUI.DragWindow();
-    }
-
+    
     private double sellScience(bool ret = false, bool retScience = false)
     {
       double sellScience;
