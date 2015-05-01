@@ -1,3 +1,6 @@
+v 1.1
+ * Misc:
+  * KSP 1.0 recompile
 v 1.0.1
  * KerboKatzUtilities compatibility release 
 v 1.00
